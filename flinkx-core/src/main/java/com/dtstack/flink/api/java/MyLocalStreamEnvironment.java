@@ -22,7 +22,6 @@ import org.apache.flink.annotation.Public;
 import org.apache.flink.api.common.InvalidProgramException;
 import org.apache.flink.api.common.JobExecutionResult;
 import org.apache.flink.api.java.ExecutionEnvironment;
-import org.apache.flink.configuration.ConfigConstants;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.RestOptions;
 import org.apache.flink.configuration.TaskManagerOptions;
@@ -48,6 +47,8 @@ import java.util.List;
  *
  * <p>When this environment is instantiated, it uses a default parallelism of {@code 1}. The default
  * parallelism can be set via {@link #setParallelism(int)}.
+ *
+ * @author jiangbo
  */
 @Public
 public class MyLocalStreamEnvironment extends StreamExecutionEnvironment {
@@ -94,6 +95,7 @@ public class MyLocalStreamEnvironment extends StreamExecutionEnvironment {
         setParallelism(1);
     }
 
+    @Override
     protected Configuration getConfiguration() {
         return configuration;
     }
@@ -114,7 +116,6 @@ public class MyLocalStreamEnvironment extends StreamExecutionEnvironment {
 
         JobGraph jobGraph = streamGraph.getJobGraph();
         jobGraph.setClasspaths(classpaths);
-        jobGraph.setAllowQueuedScheduling(true);
 
         if (settings != null){
             jobGraph.setSavepointRestoreSettings(settings);
@@ -122,8 +123,8 @@ public class MyLocalStreamEnvironment extends StreamExecutionEnvironment {
 
         Configuration configuration = new Configuration();
         configuration.addAll(jobGraph.getJobConfiguration());
-        configuration.setString(TaskManagerOptions.MANAGED_MEMORY_SIZE, "0");
-        configuration.setInteger(ConfigConstants.TASK_MANAGER_NUM_TASK_SLOTS, jobGraph.getMaximumParallelism());
+        configuration.setString(TaskManagerOptions.MANAGED_MEMORY_SIZE.key(), "512M");
+        configuration.setInteger(TaskManagerOptions.NUM_TASK_SLOTS, jobGraph.getMaximumParallelism());
 
         // add (and override) the settings with what the user defined
         configuration.addAll(this.configuration);

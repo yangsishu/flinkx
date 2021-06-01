@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,6 +18,7 @@
 
 package com.dtstack.flinkx.config;
 
+import com.dtstack.flinkx.util.GsonUtil;
 import com.google.gson.internal.LinkedTreeMap;
 
 import java.io.Serializable;
@@ -25,6 +26,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Properties;
 
 /**
  * Abstract Config
@@ -42,6 +44,10 @@ public abstract class AbstractConfig implements Serializable {
         } else {
             internalMap = new HashMap<>();
         }
+    }
+
+    public Map<String,Object> getAll(){
+        return internalMap;
     }
 
     public void setVal(String key, Object value) {
@@ -72,9 +78,9 @@ public abstract class AbstractConfig implements Serializable {
         Object obj = internalMap.get(key);
         if (obj instanceof LinkedTreeMap) {
             LinkedTreeMap treeMap = (LinkedTreeMap) obj;
-            Map<String, Object> newMap = new HashMap<>(treeMap.size());
-            newMap.putAll(treeMap);
-            return newMap;
+            Map<String, Object> map = new HashMap<>(Math.max((int) (treeMap.size()/.75f) + 1, 16));
+            map.putAll(treeMap);
+            return map;
         }
         return obj;
     }
@@ -105,10 +111,10 @@ public abstract class AbstractConfig implements Serializable {
             return defaultValue;
         }
         if(ret instanceof Integer) {
-            return ((Integer)ret).intValue();
+            return (Integer) ret;
         }
         if(ret instanceof String) {
-            return Integer.valueOf((String)ret).intValue();
+            return Integer.parseInt((String) ret);
         }
         if(ret instanceof Long) {
             return ((Long)ret).intValue();
@@ -125,7 +131,7 @@ public abstract class AbstractConfig implements Serializable {
         if(ret instanceof BigDecimal) {
             return ((BigDecimal)ret).intValue();
         }
-        throw new RuntimeException("can't cast " + key + " from " + ret.getClass().getName() + " to Integer");
+        throw new RuntimeException(String.format("cant't %s from %s to int, internalMap = %s", key, ret.getClass().getName(), GsonUtil.GSON.toJson(internalMap)));
     }
 
     public long getLongVal(String key, long defaultValue) {
@@ -140,7 +146,7 @@ public abstract class AbstractConfig implements Serializable {
             return ((Integer)ret).longValue();
         }
         if(ret instanceof String) {
-            return Long.valueOf((String)ret);
+            return Long.parseLong((String)ret);
         }
         if(ret instanceof Float) {
             return ((Float)ret).longValue();
@@ -154,7 +160,7 @@ public abstract class AbstractConfig implements Serializable {
         if(ret instanceof BigDecimal) {
             return ((BigDecimal)ret).longValue();
         }
-        throw new RuntimeException("can't cast " + key + " from " + ret.getClass().getName() + " to Long");
+        throw new RuntimeException(String.format("cant't %s from %s to long, internalMap = %s", key, ret.getClass().getName(), GsonUtil.GSON.toJson(internalMap)));
     }
 
     public double getDoubleVal(String key, double defaultValue) {
@@ -172,7 +178,7 @@ public abstract class AbstractConfig implements Serializable {
             return ((Integer) ret).doubleValue();
         }
         if (ret instanceof String) {
-            return Double.valueOf((String) ret);
+            return Double.parseDouble((String) ret);
         }
         if (ret instanceof Float) {
             return ((Float) ret).doubleValue();
@@ -183,7 +189,7 @@ public abstract class AbstractConfig implements Serializable {
         if (ret instanceof BigDecimal) {
             return ((BigDecimal) ret).doubleValue();
         }
-        throw new RuntimeException("can't cast " + key + " from " + ret.getClass().getName() + " to Long");
+        throw new RuntimeException(String.format("cant't %s from %s to double, internalMap = %s", key, ret.getClass().getName(), GsonUtil.GSON.toJson(internalMap)));
     }
 
 
@@ -195,7 +201,33 @@ public abstract class AbstractConfig implements Serializable {
         if (ret instanceof Boolean) {
             return (Boolean) ret;
         }
-        throw new RuntimeException("can't cast " + key + " from " + ret.getClass().getName() + " to Long");
+        throw new RuntimeException(String.format("cant't %s from %s to boolean, internalMap = %s", key, ret.getClass().getName(), GsonUtil.GSON.toJson(internalMap)));
+    }
+
+    /**
+     * 从指定key中获取Properties配置信息
+     * @param key
+     * @param p
+     * @return
+     */
+    @SuppressWarnings("unchecked")
+    public Properties getProperties(String key, Properties p ){
+        Object ret = internalMap.get(key);
+        if(p == null){
+            p = new Properties();
+        }
+        if (ret == null) {
+            return p;
+        }
+        if(ret instanceof Map){
+            Map<String, Object> map = (Map<String, Object>) ret;
+            for (Map.Entry<String, Object> entry : map.entrySet()) {
+                p.setProperty(entry.getKey(), String.valueOf(entry.getValue()));
+            }
+            return p;
+        }else{
+            throw new RuntimeException(String.format("cant't %s from %s to map, internalMap = %s", key, ret.getClass().getName(), GsonUtil.GSON.toJson(internalMap)));
+        }
     }
 
 }

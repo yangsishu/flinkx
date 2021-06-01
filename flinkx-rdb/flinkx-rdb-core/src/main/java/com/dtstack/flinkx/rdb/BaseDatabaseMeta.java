@@ -21,7 +21,11 @@ package com.dtstack.flinkx.rdb;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
 import java.io.Serializable;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Abstract base parent class of other database prototype implementations
@@ -30,6 +34,8 @@ import java.util.*;
  * @author huyifan.zju@163.com
  */
 public abstract class BaseDatabaseMeta implements DatabaseInterface, Serializable {
+
+    public static final int DB_TABLE_PART_SIZE = 2;
 
     @Override
     public String getStartQuote() {
@@ -150,6 +156,12 @@ public abstract class BaseDatabaseMeta implements DatabaseInterface, Serializabl
         return updateColumns;
     }
 
+    /**
+     * 构造查询sql
+     *
+     * @param column 字段列表
+     * @return 查询sql
+     */
     abstract protected String makeValues(List<String> column);
 
     protected String getUpdateSql(List<String> column, String leftTable, String rightTable) {
@@ -157,7 +169,7 @@ public abstract class BaseDatabaseMeta implements DatabaseInterface, Serializabl
         String prefixRight = StringUtils.isBlank(rightTable) ? "" : quoteTable(rightTable) + ".";
         List<String> list = new ArrayList<>();
         for(String col : column) {
-            list.add(prefixLeft + col + "=" + prefixRight + col);
+            list.add(prefixLeft + quoteColumn(col) + "=" + prefixRight + quoteColumn(col));
         }
         return StringUtils.join(list, ",");
     }

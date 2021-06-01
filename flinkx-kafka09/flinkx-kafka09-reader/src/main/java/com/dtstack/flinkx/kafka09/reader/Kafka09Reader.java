@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,49 +18,31 @@
 package com.dtstack.flinkx.kafka09.reader;
 
 import com.dtstack.flinkx.config.DataTransferConfig;
-import com.dtstack.flinkx.config.ReaderConfig;
-import com.dtstack.flinkx.reader.DataReader;
-import org.apache.flink.streaming.api.datastream.DataStream;
+import com.dtstack.flinkx.kafka09.format.Kafka09InputFormat;
+import com.dtstack.flinkx.kafkabase.KafkaConfigKeys;
+import com.dtstack.flinkx.kafkabase.format.KafkaBaseInputFormatBuilder;
+import com.dtstack.flinkx.kafkabase.reader.KafkaBaseReader;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.types.Row;
-
-import java.util.Map;
-
-import static com.dtstack.flinkx.kafka09.KafkaConfigKeys.*;
 
 /**
- * company: www.dtstack.com
- * author: toutian
- * create: 2019/7/4
+ * @company: www.dtstack.com
+ * @author: toutian
+ * @create: 2019/7/4
  */
-public class Kafka09Reader extends DataReader {
-
-    private String topic;
-
-    private String codec;
-
-    private String encoding;
-
-    private Map<String, String> consumerSettings;
+public class Kafka09Reader extends KafkaBaseReader {
 
     public Kafka09Reader(DataTransferConfig config, StreamExecutionEnvironment env) {
         super(config, env);
-        ReaderConfig readerConfig = config.getJob().getContent().get(0).getReader();
-        topic = readerConfig.getParameter().getStringVal(KEY_TOPIC);
-        codec = readerConfig.getParameter().getStringVal(KEY_CODEC, "plain");
-        consumerSettings = (Map<String, String>) readerConfig.getParameter().getVal(KEY_CONSUMER_SETTINGS);
-        encoding = readerConfig.getParameter().getStringVal(KEY_ENCODING, "utf-8");
+        //兼容历史脚本
+        String id = consumerSettings.get(KafkaConfigKeys.GROUP_ID);
+        if(StringUtils.isNotBlank(id)){
+            super.groupId = id;
+        }
     }
 
     @Override
-    public DataStream<Row> readData() {
-        Kafka09InputFormat format = new Kafka09InputFormat();
-        format.setTopic(topic);
-        format.setCodec(codec);
-        format.setConsumerSettings(consumerSettings);
-        format.setEncoding(encoding);
-        format.setRestoreConfig(restoreConfig);
-
-        return createInput(format, "kafka09reader");
+    public KafkaBaseInputFormatBuilder getBuilder(){
+        return new KafkaBaseInputFormatBuilder(new Kafka09InputFormat());
     }
 }

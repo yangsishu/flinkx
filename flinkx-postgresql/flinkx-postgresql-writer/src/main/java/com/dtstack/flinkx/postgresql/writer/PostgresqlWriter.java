@@ -19,14 +19,16 @@
 package com.dtstack.flinkx.postgresql.writer;
 
 import com.dtstack.flinkx.config.DataTransferConfig;
+import com.dtstack.flinkx.constants.ConstantValue;
 import com.dtstack.flinkx.postgresql.PostgresqlDatabaseMeta;
 import com.dtstack.flinkx.postgresql.PostgresqlTypeConverter;
 import com.dtstack.flinkx.postgresql.format.PostgresqlOutputFormat;
 import com.dtstack.flinkx.rdb.datawriter.JdbcDataWriter;
 import com.dtstack.flinkx.rdb.outputformat.JdbcOutputFormatBuilder;
+import com.dtstack.flinkx.streaming.api.functions.sink.DtOutputFormatSinkFunction;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.DataStreamSink;
-import org.apache.flink.streaming.api.functions.sink.OutputFormatSinkFunction;
 import org.apache.flink.types.Row;
 
 /**
@@ -37,8 +39,13 @@ import org.apache.flink.types.Row;
  */
 public class PostgresqlWriter extends JdbcDataWriter {
 
+
     public PostgresqlWriter(DataTransferConfig config) {
         super(config);
+        String schema = config.getJob().getContent().get(0).getWriter().getParameter().getConnection().get(0).getSchema();
+        if (StringUtils.isNotEmpty(schema)){
+            table = schema + ConstantValue.POINT_SYMBOL + table;
+        }
         setDatabaseInterface(new PostgresqlDatabaseMeta());
         setTypeConverterInterface(new PostgresqlTypeConverter());
     }
@@ -48,7 +55,7 @@ public class PostgresqlWriter extends JdbcDataWriter {
         PostgresqlOutputFormat postgresqlOutputFormat = new PostgresqlOutputFormat();
         JdbcOutputFormatBuilder builder = new JdbcOutputFormatBuilder(postgresqlOutputFormat);
         builder.setDriverName(databaseInterface.getDriverClass());
-        builder.setDBUrl(dbUrl);
+        builder.setDbUrl(dbUrl);
         builder.setUsername(username);
         builder.setPassword(password);
         builder.setBatchInterval(batchSize);
@@ -70,7 +77,7 @@ public class PostgresqlWriter extends JdbcDataWriter {
         builder.setRestoreConfig(restoreConfig);
         builder.setInsertSqlMode(insertSqlMode);
 
-        OutputFormatSinkFunction sinkFunction = new OutputFormatSinkFunction(builder.finish());
+        DtOutputFormatSinkFunction sinkFunction = new DtOutputFormatSinkFunction(builder.finish());
         DataStreamSink<?> dataStreamSink = dataSet.addSink(sinkFunction);
         String sinkName = (databaseInterface.getDatabaseType() + "writer").toLowerCase();
         dataStreamSink.name(sinkName);

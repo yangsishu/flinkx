@@ -18,10 +18,18 @@
 
 package com.dtstack.flinkx.mongodb.reader;
 
-import com.dtstack.flinkx.inputformat.RichInputFormat;
-import com.dtstack.flinkx.mongodb.MongodbUtil;
+import com.dtstack.flinkx.constants.ConstantValue;
+import com.dtstack.flinkx.inputformat.BaseRichInputFormat;
+import com.dtstack.flinkx.mongodb.MongodbClientUtil;
+import com.dtstack.flinkx.mongodb.MongodbConfig;
 import com.dtstack.flinkx.reader.MetaColumn;
+import com.dtstack.flinkx.util.ExceptionUtil;
+import com.dtstack.flinkx.util.GsonUtil;
 import com.dtstack.flinkx.util.StringUtil;
+import com.google.gson.Gson;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.mongodb.BasicDBObject;
 import com.mongodb.MongoClient;
 import com.mongodb.client.FindIterable;
@@ -29,14 +37,15 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 import org.apache.commons.lang.StringUtils;
-import org.apache.flink.configuration.Configuration;
 import org.apache.flink.core.io.InputSplit;
 import org.apache.flink.types.Row;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Read plugin for reading static data
@@ -44,45 +53,34 @@ import java.util.*;
  * @Company: www.dtstack.com
  * @author jiangbo
  */
-public class MongodbInputFormat extends RichInputFormat {
-
-    protected String hostPorts;
-
-    protected String username;
-
-    protected String password;
-
-    protected String database;
-
-    protected String collectionName;
+public class MongodbInputFormat extends BaseRichInputFormat {
 
     protected List<MetaColumn> metaColumns;
 
-    protected String filterJson;
-
-    protected Map<String,Object> mongodbConfig;
-
-    protected int fetchSize;
-
     private Bson filter;
+
+    protected MongodbConfig mongodbConfig;
 
     private transient MongoCursor<Document> cursor;
 
     private transient MongoClient client;
 
     @Override
-    public void configure(Configuration parameters) {
+    public void openInputFormat() throws IOException {
+        super.openInputFormat();
+
         buildFilter();
     }
 
     @Override
     protected void openInternal(InputSplit inputSplit) throws IOException {
+        LOG.info("inputSplit = {}", inputSplit);
         MongodbInputSplit split = (MongodbInputSplit) inputSplit;
         FindIterable<Document> findIterable;
 
-        client = MongodbUtil.getMongoClient(mongodbConfig);
-        MongoDatabase db = client.getDatabase(database);
-        MongoCollection<Document> collection = db.getCollection(collectionName);
+        client = MongodbClientUtil.getClient(mongodbConfig);
+        MongoDatabase db = client.getDatabase(mongodbConfig.getDatabase());
+        MongoCollection<Document> collection = db.getCollection(mongodbConfig.getCollectionName());
 
         if(filter == null){
             findIterable = collection.find();
@@ -92,18 +90,19 @@ public class MongodbInputFormat extends RichInputFormat {
 
         findIterable = findIterable.skip(split.getSkip())
                 .limit(split.getLimit())
-                .batchSize(fetchSize);
+                .batchSize(mongodbConfig.getFetchSize());
         cursor = findIterable.iterator();
     }
 
     @Override
     public Row nextRecordInternal(Row row) throws IOException {
         Document doc = cursor.next();
-        if(metaColumns.size() == 1 && "*".equals(metaColumns.get(0).getName())){
+        if(metaColumns.size() == 1 && ConstantValue.STAR_SYMBOL.equals(metaColumns.get(0).getName())){
             row = new Row(doc.size());
             String[] names = doc.keySet().toArray(new String[0]);
             for (int i = 0; i < names.length; i++) {
-                row.setField(i,doc.get(names[i]));
+                Object tempData =doc.get(names[i]);
+                row.setField(i, conventDocument(tempData));
             }
         } else {
             row = new Row(metaColumns.size());
@@ -112,7 +111,8 @@ public class MongodbInputFormat extends RichInputFormat {
 
                 Object value = null;
                 if(metaColumn.getName() != null){
-                    value = doc.get(metaColumn.getName());
+                    Object tempData = doc.get(metaColumn.getName());
+                    value = conventDocument(tempData);
                     if(value == null && metaColumn.getValue() != null){
                         value = metaColumn.getValue();
                     }
@@ -133,26 +133,27 @@ public class MongodbInputFormat extends RichInputFormat {
 
     @Override
     protected void closeInternal() throws IOException {
-        MongodbUtil.close(client, cursor);
+        MongodbClientUtil.close(client, cursor);
     }
 
     @Override
-    public InputSplit[] createInputSplits(int minNumSplits) throws IOException {
+    public InputSplit[] createInputSplitsInternal(int minNumSplits) throws IOException {
         ArrayList<MongodbInputSplit> splits = new ArrayList<>();
 
         MongoClient client = null;
         try {
-            client = MongodbUtil.getMongoClient(mongodbConfig);
-            MongoDatabase db = client.getDatabase(database);
-            MongoCollection<Document> collection = db.getCollection(collectionName);
+            client = MongodbClientUtil.getClient(mongodbConfig);
+            MongoDatabase db = client.getDatabase(mongodbConfig.getDatabase());
+            MongoCollection<Document> collection = db.getCollection(mongodbConfig.getCollectionName());
 
-            long docNum = filter == null ? collection.count() : collection.count(filter);
+            //不使用 collection.countDocuments() 获取总数是因为这个方法在大数据量时超时，导致出现超时异常结束任务
+            long docNum = collection.estimatedDocumentCount();
             if(docNum <= minNumSplits){
                 splits.add(new MongodbInputSplit(0,(int)docNum));
                 return splits.toArray(new MongodbInputSplit[splits.size()]);
             }
 
-            long size = Math.floorDiv(docNum,(long)minNumSplits);
+            long size = Math.floorDiv(docNum, minNumSplits);
             for (int i = 0; i < minNumSplits; i++) {
                 splits.add(new MongodbInputSplit((int)(i * size), (int)size));
             }
@@ -161,9 +162,10 @@ public class MongodbInputFormat extends RichInputFormat {
                 splits.add(new MongodbInputSplit((int)(size * minNumSplits), (int)(docNum - size * minNumSplits)));
             }
         } catch (Exception e){
-            LOG.error("{}", e);
+            LOG.error("error to create inputSplits, e = {}", ExceptionUtil.getErrorMessage(e));
+            throw e;
         } finally {
-            MongodbUtil.close(client, null);
+            MongodbClientUtil.close(client, null);
         }
 
         return splits.toArray(new MongodbInputSplit[splits.size()]);
@@ -175,8 +177,21 @@ public class MongodbInputFormat extends RichInputFormat {
     }
 
     private void buildFilter(){
-        if(StringUtils.isNotEmpty(filterJson)){
-            filter = BasicDBObject.parse(filterJson);
+        if(StringUtils.isNotEmpty(mongodbConfig.getFilter())){
+            filter = BasicDBObject.parse(mongodbConfig.getFilter());
         }
+    }
+
+    /**
+     * 如果是 map  或者 list 数据结构 使用gson转为json格式
+     * 主要针对 mongodb的 Document(继承Map) 类型 ，其原有document.tostring 格式不符合正常json格式
+     * @param object
+     * @return
+     */
+    private Object conventDocument(Object object){
+         if( object instanceof  List || object instanceof Map){
+            return GsonUtil.GSON.toJson(object);
+        }
+        return object;
     }
 }

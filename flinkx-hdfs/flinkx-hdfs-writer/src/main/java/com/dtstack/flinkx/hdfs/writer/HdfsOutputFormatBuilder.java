@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,7 +18,10 @@
 
 package com.dtstack.flinkx.hdfs.writer;
 
+import com.dtstack.flinkx.constants.ConstantValue;
 import com.dtstack.flinkx.outputformat.FileOutputFormatBuilder;
+import org.apache.commons.lang3.StringUtils;
+
 import java.util.List;
 import java.util.Map;
 
@@ -30,7 +33,7 @@ import java.util.Map;
  */
 public class HdfsOutputFormatBuilder extends FileOutputFormatBuilder {
 
-    private HdfsOutputFormat format;
+    private BaseHdfsOutputFormat format;
 
     public HdfsOutputFormatBuilder(String type) {
         switch(type.toUpperCase()) {
@@ -78,20 +81,28 @@ public class HdfsOutputFormatBuilder extends FileOutputFormatBuilder {
         format.fullColumnTypes = fullColumnTypes;
     }
 
-    public void setDefaultFS(String defaultFS) {
-        format.defaultFS = defaultFS;
+    public void setDefaultFs(String defaultFs) {
+        format.defaultFs = defaultFs;
+    }
+
+    public void setEnableDictionary(boolean enableDictionary) {
+        format.enableDictionary = enableDictionary;
     }
 
     @Override
     protected void checkFormat() {
-        super.checkFormat();
 
-        if (format.defaultFS == null || format.defaultFS.length() == 0) {
-            throw new IllegalArgumentException("No defaultFS supplied.");
+
+        StringBuilder errorMessage = new StringBuilder(256);
+
+        if (format.getPath() == null || format.getPath().length() == 0) {
+            errorMessage.append("No path supplied. \n");
         }
 
-        if (!format.defaultFS.startsWith("hdfs://")) {
-            throw new IllegalArgumentException("defaultFS should start with hdfs://");
+        if (StringUtils.isBlank(format.defaultFs)) {
+            errorMessage.append("No defaultFS supplied. \n");
+        }else if (!format.defaultFs.startsWith(ConstantValue.PROTOCOL_HDFS)) {
+            errorMessage.append("defaultFS should start with hdfs:// \n");
         }
     }
 

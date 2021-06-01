@@ -34,11 +34,133 @@ under the License.
     </properties>
 
     <dependencies>
+        <!--lzop-->
+        <dependency>
+            <groupId>org.anarres.lzo</groupId>
+            <artifactId>lzo-core</artifactId>
+            <version>1.0.2</version>
+        </dependency>
+        <dependency>
+            <groupId>org.anarres.lzo</groupId>
+            <artifactId>lzo-hadoop</artifactId>
+            <version>1.0.5</version>
+            <exclusions>
+                <exclusion>
+                    <artifactId>hadoop-core</artifactId>
+                    <groupId>org.apache.hadoop</groupId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <!--lzop-->
         <dependency>
             <groupId>com.dtstack.flinkx</groupId>
             <artifactId>flinkx-hdfs-core</artifactId>
             <version>1.6</version>
             <exclusions>
+                <exclusion>
+                    <artifactId>jsr305</artifactId>
+                    <groupId>com.google.code.findbugs</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>commons-cli</artifactId>
+                    <groupId>commons-cli</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>commons-lang</artifactId>
+                    <groupId>commons-lang</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>log4j</artifactId>
+                    <groupId>log4j</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>antlr-runtime</artifactId>
+                    <groupId>org.antlr</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>avro</artifactId>
+                    <groupId>org.apache.avro</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>commons-compress</artifactId>
+                    <groupId>org.apache.commons</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>curator-client</artifactId>
+                    <groupId>org.apache.curator</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>curator-framework</artifactId>
+                    <groupId>org.apache.curator</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>hadoop-annotations</artifactId>
+                    <groupId>org.apache.hadoop</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>zookeeper</artifactId>
+                    <groupId>org.apache.zookeeper</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>jackson-core-asl</artifactId>
+                    <groupId>org.codehaus.jackson</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>jackson-mapper-asl</artifactId>
+                    <groupId>org.codehaus.jackson</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>slf4j-api</artifactId>
+                    <groupId>org.slf4j</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>slf4j-log4j12</artifactId>
+                    <groupId>org.slf4j</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>snappy-java</artifactId>
+                    <groupId>org.xerial.snappy</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>guava</artifactId>
+                    <groupId>com.google.guava</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>commons-codec</artifactId>
+                    <groupId>commons-codec</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>commons-collections</artifactId>
+                    <groupId>commons-collections</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>commons-logging</artifactId>
+                    <groupId>commons-logging</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>hadoop-yarn-api</artifactId>
+                    <groupId>org.apache.hadoop</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>hadoop-yarn-common</artifactId>
+                    <groupId>org.apache.hadoop</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>hadoop-yarn-server-applicationhistoryservice</artifactId>
+                    <groupId>org.apache.hadoop</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>hadoop-yarn-server-resourcemanager</artifactId>
+                    <groupId>org.apache.hadoop</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>hadoop-yarn-server-common</artifactId>
+                    <groupId>org.apache.hadoop</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>hadoop-yarn-server-web-proxy</artifactId>
+                    <groupId>org.apache.hadoop</groupId>
+                </exclusion>
                 <exclusion>
                     <artifactId>httpcore</artifactId>
                     <groupId>org.apache.httpcomponents</groupId>
@@ -47,20 +169,13 @@ under the License.
                     <artifactId>httpclient</artifactId>
                     <groupId>org.apache.httpcomponents</groupId>
                 </exclusion>
+                <exclusion>
+                    <artifactId>commons-httpclient</artifactId>
+                    <groupId>commons-httpclient</groupId>
+                </exclusion>
             </exclusions>
         </dependency>
 
-        <dependency>
-            <artifactId>httpcore</artifactId>
-            <groupId>org.apache.httpcomponents</groupId>
-            <version>4.4.5</version>
-        </dependency>
-
-        <dependency>
-            <artifactId>httpclient</artifactId>
-            <groupId>org.apache.httpcomponents</groupId>
-            <version>4.5.2</version>
-        </dependency>
 
     </dependencies>
 
@@ -69,7 +184,7 @@ under the License.
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
-                <version>1.4</version>
+                <version>3.1.0</version>
                 <executions>
                     <execution>
                         <phase>package</phase>
@@ -77,10 +192,10 @@ under the License.
                             <goal>shade</goal>
                         </goals>
                         <configuration>
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
                             <artifactSet>
                                 <excludes>
                                     <exclude>org.slf4j:slf4j-api</exclude>
-                                    <!--<exclude>log4j:log4j</exclude>-->
                                     <exclude>ch.qos.logback:*</exclude>
                                     <exclude>com.google.code.gson:*</exclude>
                                     <exclude>com.data-artisans:*</exclude>
@@ -98,6 +213,16 @@ under the License.
                                     </excludes>
                                 </filter>
                             </filters>
+                            <relocations>
+                                <relocation>
+                                    <pattern>com.google.common</pattern>
+                                    <shadedPattern>shade.hdfswriter.com.google.common</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>com.google.thirdparty</pattern>
+                                    <shadedPattern>shade.hdfswriter.com.google.thirdparty</shadedPattern>
+                                </relocation>
+                            </relocations>
                         </configuration>
                     </execution>
                 </executions>
@@ -116,13 +241,14 @@ under the License.
                         </goals>
                         <configuration>
                             <tasks>
-                                <copy todir="${basedir}/../../plugins/hdfswriter">
+                                <copy todir="${basedir}/../../syncplugins/hdfswriter">
                                     <fileset dir="target/">
                                         <include name="${project.name}-${project.version}.jar" />
                                     </fileset>
                                 </copy>
-                                <move file="${basedir}/../../plugins/hdfswriter/${project.name}-${project.version}.jar"
-                                      tofile="${basedir}/../../plugins/hdfswriter/${project.name}-${git.branch}.jar" />
+                                <!--suppress UnresolvedMavenProperty -->
+                                <move file="${basedir}/../../syncplugins/hdfswriter/${project.name}-${project.version}.jar"
+                                      tofile="${basedir}/../../syncplugins/hdfswriter/${project.name}-${package.name}.jar" />
                             </tasks>
                         </configuration>
                     </execution>

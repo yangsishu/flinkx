@@ -13,6 +13,11 @@
 
     <dependencies>
         <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>12.0.1</version>
+        </dependency>
+        <dependency>
             <groupId>com.dtstack.flinkx</groupId>
             <artifactId>flinkx-hbase-core</artifactId>
             <version>1.6</version>
@@ -38,7 +43,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
-                <version>1.4</version>
+                <version>3.1.0</version>
                 <executions>
                     <execution>
                         <phase>package</phase>
@@ -46,13 +51,12 @@
                             <goal>shade</goal>
                         </goals>
                         <configuration>
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
                             <artifactSet>
                                 <excludes>
                                     <exclude>com.data-artisans:*</exclude>
                                     <exclude>org.scala-lang:*</exclude>
-                                    <!--<exclude>io.netty:*</exclude>-->
                                     <exclude>org.slf4j:slf4j-api</exclude>
-                                    <!--<exclude>log4j:log4j</exclude>-->
                                     <exclude>ch.qos.logback:*</exclude>
                                 </excludes>
                             </artifactSet>
@@ -66,6 +70,16 @@
                                     </excludes>
                                 </filter>
                             </filters>
+                            <relocations>
+                                <relocation>
+                                    <pattern>com.google.common</pattern>
+                                    <shadedPattern>shade.hbase.com.google.common</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>com.google.thirdparty</pattern>
+                                    <shadedPattern>shade.hbase.com.google.thirdparty</shadedPattern>
+                                </relocation>
+                            </relocations>
                         </configuration>
                     </execution>
                 </executions>
@@ -84,13 +98,14 @@
                         </goals>
                         <configuration>
                             <tasks>
-                                <copy todir="${basedir}/../../plugins/hbasereader">
+                                <copy todir="${basedir}/../../syncplugins/hbasereader">
                                     <fileset dir="target/">
                                         <include name="${project.name}-${project.version}.jar" />
                                     </fileset>
                                 </copy>
-                                <move file="${basedir}/../../plugins/hbasereader/${project.name}-${project.version}.jar"
-                                      tofile="${basedir}/../../plugins/hbasereader/${project.name}-${git.branch}.jar" />
+                                <!--suppress UnresolvedMavenProperty -->
+                                <move file="${basedir}/../../syncplugins/hbasereader/${project.name}-${project.version}.jar"
+                                      tofile="${basedir}/../../syncplugins/hbasereader/${project.name}-${package.name}.jar" />
                             </tasks>
                         </configuration>
                     </execution>
